@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NOTE GROWTH Dashboard</title>
+<style>
+:root{--bg:#0b1020;--panel:#121a2f;--muted:#8fa0bf;--text:#eef3ff;--line:#26314f;--accent:#7aa2ff;--good:#68d391;--bad:#fc8181}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#09101e,#101729);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:1180px;margin:auto;padding:24px}.top{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{margin:0;font-size:28px}.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.controls{display:flex;gap:8px;align-items:center}.btn,.month{background:#17213b;border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px}
+.btn{cursor:pointer}.btn:hover{border-color:#4562a5}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0}
+.card,.panel{background:rgba(18,26,47,.93);border:1px solid var(--line);border-radius:16px;padding:16px}
+.k{color:var(--muted);font-size:12px}.v{font-size:27px;font-weight:700;margin-top:5px}.delta{font-size:12px;margin-top:4px}
+.good{color:var(--good)}.bad{color:var(--bad)}.muted{color:var(--muted)}
+.layout{display:grid;grid-template-columns:1.35fr .85fr;gap:14px}.panel h2{font-size:16px;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
+.barrow{display:grid;grid-template-columns:100px 1fr 70px;gap:10px;align-items:center;margin:11px 0}.barbg{height:10px;background:#202a43;border-radius:999px;overflow:hidden}.bar{height:100%;background:linear-gradient(90deg,#6e8efb,#a777e3)}
+.tabs{display:flex;gap:8px;margin:18px 0 10px}.tab{padding:9px 12px;border-radius:10px;background:#121a2f;border:1px solid var(--line);cursor:pointer}.tab.active{border-color:#7aa2ff}
+.section{display:none}.section.active{display:block}.formgrid{display:grid;grid-template-columns:150px repeat(6,1fr);gap:8px;align-items:center}
+.formgrid input{width:100%;background:#0f1730;border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--text)}
+.formgrid .head{color:var(--muted);font-size:11px}.name{font-weight:600}.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+textarea{width:100%;min-height:170px;background:#0f1730;border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text)}
+.note{font-size:12px;color:var(--muted);line-height:1.6}.hero{margin-top:14px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.formgrid{grid-template-columns:110px repeat(3,1fr);overflow-x:auto}.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>NOTE GROWTH</h1><div class="sub">noteをゴールに、YouTube / Instagram / X / Substack を月次比較</div></div>
+    <div class="controls">
+      <button class="btn" id="prev">←</button>
+      <input class="month" type="month" id="month">
+      <button class="btn" id="next">→</button>
+      <button class="btn" id="save">保存</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">note PV</div><div class="v" id="pv">0</div><div class="delta" id="pvD"></div></div>
+    <div class="card"><div class="k">note スキ</div><div class="v" id="likes">0</div><div class="delta" id="likesD"></div></div>
+    <div class="card"><div class="k">SNS 表示・再生</div><div class="v" id="reach">0</div><div class="delta" id="reachD"></div></div>
+    <div class="card"><div class="k">note流入クリック</div><div class="v" id="clicks">0</div><div class="delta" id="clicksD"></div></div>
+    <div class="card"><div class="k">総合誘導率</div><div class="v" id="rate">0%</div><div class="delta" id="rateD"></div></div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>SNS別 月次比較</h2>
+      <table><thead><tr><th>SNS</th><th>表示/再生</th><th>反応</th><th>note流入</th><th>誘導率</th><th>前月比</th></tr></thead><tbody id="tbody"></tbody></table>
+    </div>
+    <div class="panel">
+      <h2>noteへの流入構成</h2>
+      <div id="bars"></div>
+      <div class="note">クリック数が0の媒体はバーが表示されません。</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="input">月次入力</button>
+    <button class="tab" data-tab="ai">AI分析用</button>
+  </div>
+
+  <div class="section active panel" id="input">
+    <h2>月次データ入力</h2>
+    <div class="formgrid" id="form"></div>
+    <div class="hero">
+      <h2>note月次</h2>
+      <div class="formgrid" id="noteForm"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="copyPrev">前月データをコピー</button>
+      <button class="btn" id="export">JSONを書き出す</button>
+      <label class="btn">JSONを読み込む<input type="file" id="import" accept=".json" hidden></label>
+    </div>
+  </div>
+
+  <div class="section panel" id="ai">
+    <h2>AI分析用データ</h2>
+    <textarea id="aiText" readonly></textarea>
+    <div class="actions"><button class="btn" id="copyAI">コピー</button></div>
+    <div class="note">この文章をChatGPTやClaudeに貼れば、その月と前月の比較分析を依頼できます。将来API接続すれば自動分析に変更できます。</div>
+  </div>
+</div>
+
+<script>
+const SEED = {"2026-09": {"note": {"pv": 1099, "likes": 35, "followers": 0, "paidSales": 0, "revenue": 0}, "YouTube": {"followers": 0, "posts": 1, "reach": 120, "reactions": 5, "profile": 3, "noteClicks": 1}, "Instagram": {"followers": 0, "posts": 0, "reach": 0, "reactions": 0, "profile": 0, "noteClicks": 0}, "X": {"followers": 0, "posts": 0, "reach": 0, "reactions": 0, "profile": 0, "noteClicks": 0}, "Substack": {"followers": 0, "posts": 0, "reach": 0, "reactions": 0, "profile": 0, "noteClicks": 0}}};
+const SNS=["YouTube","Instagram","X","Substack"];
+const snsFields=[["followers","フォロワー"],["posts","投稿数"],["reach","表示/再生"],["reactions","反応"],["profile","プロフィール"],["noteClicks","note流入"]];
+const noteFields=[["pv","PV"],["likes","スキ"],["followers","フォロワー増"],["paidSales","有料購入"],["revenue","売上(円)"]];
+let db=JSON.parse(localStorage.getItem("noteGrowthDB")||"null")||SEED;
+const $=s=>document.querySelector(s);
+const fmt=n=>(Number(n)||0).toLocaleString("ja-JP");
+function emptyMonth(){let o={note:{}}; noteFields.forEach(([k])=>o.note[k]=0); SNS.forEach(s=>{o[s]={};snsFields.forEach(([k])=>o[s][k]=0)});return o}
+function prevMonth(m){let [y,mo]=m.split("-").map(Number);mo--;if(mo===0){y--;mo=12}return `${y}-${String(mo).padStart(2,"0")}`}
+function nextMonth(m){let [y,mo]=m.split("-").map(Number);mo++;if(mo===13){y++;mo=1}return `${y}-${String(mo).padStart(2,"0")}`}
+function pct(a,b){if(!b)return null;return (a/b-1)*100}
+function dtext(a,b,suffix=""){let p=pct(a,b);if(p===null)return "前月データなし";return `${p>=0?"+":""}${p.toFixed(1)}% 前月比${suffix}`}
+function cls(a,b){let p=pct(a,b);return p===null?"muted":p>=0?"good":"bad"}
+function ensure(m){if(!db[m])db[m]=emptyMonth();return db[m]}
+function totals(m){let x=ensure(m),reach=0,clicks=0;SNS.forEach(s=>{reach+=+x[s].reach||0;clicks+=+x[s].noteClicks||0});return {pv:+x.note.pv||0,likes:+x.note.likes||0,reach,clicks,rate:reach?clicks/reach*100:0}}
+function renderForm(m){
+ let x=ensure(m), h='<div></div>'+snsFields.map(([,l])=>`<div class="head">${l}</div>`).join("");
+ SNS.forEach(s=>{h+=`<div class="name">${s}</div>`;snsFields.forEach(([k])=>h+=`<input type="number" min="0" data-sns="${s}" data-key="${k}" value="${x[s][k]||0}">`)});
+ $("#form").innerHTML=h;
+ let n='<div></div>'+noteFields.map(([,l])=>`<div class="head">${l}</div>`).join("");
+ n+=`<div class="name">note</div>`+noteFields.map(([k])=>`<input type="number" min="0" data-note="${k}" value="${x.note[k]||0}">`).join("");
+ $("#noteForm").innerHTML=n;
+}
+function render(){
+ const m=$("#month").value, pm=prevMonth(m), a=totals(m), b=totals(pm);
+ [["pv","pvD"],["likes","likesD"],["reach","reachD"],["clicks","clicksD"]].forEach(([k,d])=>{$("#"+k).textContent=fmt(a[k]);$("#"+d).textContent=dtext(a[k],b[k]);$("#"+d).className="delta "+cls(a[k],b[k])});
+ $("#rate").textContent=a.rate.toFixed(2)+"%";$("#rateD").textContent=b.reach?`${(a.rate-b.rate)>=0?"+":""}${(a.rate-b.rate).toFixed(2)}pt 前月比`:"前月データなし";$("#rateD").className="delta "+(b.reach?(a.rate>=b.rate?"good":"bad"):"muted");
+ let x=ensure(m),p=ensure(pm),rows="";
+ SNS.forEach(s=>{let r=+x[s].reach||0,c=+x[s].noteClicks||0,rate=r?c/r*100:0,pr=+p[s].reach||0,pc=+p[s].noteClicks||0;rows+=`<tr><td>${s}</td><td>${fmt(r)}</td><td>${fmt(x[s].reactions)}</td><td>${fmt(c)}</td><td>${rate.toFixed(2)}%</td><td class="${cls(c,pc)}">${pc?dtext(c,pc):"—"}</td></tr>`});
+ $("#tbody").innerHTML=rows;
+ let max=Math.max(...SNS.map(s=>+x[s].noteClicks||0),1);$("#bars").innerHTML=SNS.map(s=>{let c=+x[s].noteClicks||0;return `<div class="barrow"><div>${s}</div><div class="barbg"><div class="bar" style="width:${c/max*100}%"></div></div><div>${fmt(c)}</div></div>`}).join("");
+ renderForm(m); buildAI(m,pm);
+}
+function buildAI(m,pm){
+ let x=ensure(m),p=ensure(pm),a=totals(m),b=totals(pm);
+ let lines=[`【SNS→note 月次分析データ】`,`対象月: ${m} / 比較月: ${pm}`,``,`■ note`,`PV: ${a.pv}（前月 ${b.pv}）`,`スキ: ${a.likes}（前月 ${b.likes}）`,`有料購入: ${x.note.paidSales||0} / 売上: ${x.note.revenue||0}円`,``,`■ SNS`];
+ SNS.forEach(s=>{let r=+x[s].reach||0,c=+x[s].noteClicks||0;lines.push(`${s}: 表示/再生 ${r}, 反応 ${x[s].reactions||0}, note流入 ${c}, 誘導率 ${r?(c/r*100).toFixed(2):"0.00"}%`)});
+ lines.push(``,`このデータについて、1.結論 2.理由 3.数字 の順で、前月比・最も効率のよいSNS・改善ポイントを分析してください。確認できないことは推測せず明記してください。`);
+ $("#aiText").value=lines.join("\n");
+}
+function pullInputs(){
+ let m=$("#month").value,x=ensure(m);
+ document.querySelectorAll("[data-sns]").forEach(el=>x[el.dataset.sns][el.dataset.key]=Number(el.value||0));
+ document.querySelectorAll("[data-note]").forEach(el=>x.note[el.dataset.note]=Number(el.value||0));
+ db[m]=x; localStorage.setItem("noteGrowthDB",JSON.stringify(db)); render();
+}
+$("#month").value="2026-09";render();
+$("#prev").onclick=()=>{$("#month").value=prevMonth($("#month").value);render()}
+$("#next").onclick=()=>{$("#month").value=nextMonth($("#month").value);render()}
+$("#month").onchange=render;$("#save").onclick=pullInputs;
+$("#copyPrev").onclick=()=>{let m=$("#month").value,p=prevMonth(m);db[m]=JSON.parse(JSON.stringify(ensure(p)));localStorage.setItem("noteGrowthDB",JSON.stringify(db));render()}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab,.section").forEach(e=>e.classList.remove("active"));t.classList.add("active");$("#"+t.dataset.tab).classList.add("active")});
+$("#copyAI").onclick=()=>navigator.clipboard.writeText($("#aiText").value);
+$("#export").onclick=()=>{let blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="note-growth-data.json";a.click();URL.revokeObjectURL(a.href)}
+$("#import").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);localStorage.setItem("noteGrowthDB",JSON.stringify(db));render()}catch{alert("JSONを読み込めませんでした")}};r.readAsText(f)}
+</script>
+</body>
+</html>
